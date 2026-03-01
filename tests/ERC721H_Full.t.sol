@@ -638,9 +638,9 @@ contract ERC721H_FullTest is Test {
         vm.prank(alice);
         nft.transferFrom(alice, bob, tokenId);
 
-        // Second transfer of SAME token in same TX → revert
+        // Second transfer of SAME token in same TX → tstore guard fires first
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(bytes4(0x96817234)));
+        vm.expectRevert(ERC721H.TokenAlreadyTransferredThisTx.selector);
         nft.transferFrom(bob, charlie, tokenId);
     }
 
@@ -689,9 +689,9 @@ contract ERC721H_FullTest is Test {
         nft.transferFrom(alice, bob, tokenId);
 
         // Transfer 2: bob → charlie at SAME block, SAME TX
-        // tstore guard fires FIRST (intra-TX), before ownerAtBlock (inter-TX)
+        // tstore intra-TX guard fires before the inter-TX same-block guard
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(bytes4(0x96817234))); // TokenAlreadyTransferredThisTx
+        vm.expectRevert(ERC721H.TokenAlreadyTransferredThisTx.selector);
         nft.transferFrom(bob, charlie, tokenId);
     }
 
