@@ -23,8 +23,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          forge install --no-git --no-commit foundry-rs/forge-std
-          forge install --no-git --no-commit OpenZeppelin/openzeppelin-contracts
+          forge install --no-git foundry-rs/forge-std
+          forge install --no-git OpenZeppelin/openzeppelin-contracts
 
       - name: Show tool versions
         run: |
@@ -64,8 +64,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          forge install --no-git --no-commit foundry-rs/forge-std
-          forge install --no-git --no-commit OpenZeppelin/openzeppelin-contracts
+          forge install --no-git foundry-rs/forge-std
+          forge install --no-git OpenZeppelin/openzeppelin-contracts
 
       - name: Setup Node
         uses: actions/setup-node@v4
