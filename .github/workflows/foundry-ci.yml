@@ -1,0 +1,38 @@
+name: Foundry CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Install dependencies
+        run: |
+          forge install --no-git --no-commit foundry-rs/forge-std
+          forge install --no-git --no-commit OpenZeppelin/openzeppelin-contracts
+
+      - name: Show tool versions
+        run: |
+          forge --version
+          solc --version || true
+
+      - name: Build
+        run: forge build
+
+      - name: Test
+        run: forge test --gas-report
