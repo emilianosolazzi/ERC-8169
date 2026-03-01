@@ -11,3 +11,11 @@ remappings = [
     "forge-std/=lib/forge-std/src/",
     "@openzeppelin/=lib/openzeppelin-contracts/"
 ]
+
+[invariant]
+runs = 128
+depth = 64
+fail_on_revert = false
+
+[profile.invariant]
+ffi = true

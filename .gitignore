@@ -4,3 +4,6 @@ cache/
 
 # Dependencies (installed via forge install)
 lib/
+
+# Node tooling
+node_modules/

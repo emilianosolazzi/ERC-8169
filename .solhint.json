@@ -1,0 +1,14 @@
+{
+  "extends": "solhint:recommended",
+  "rules": {
+    "compiler-version": ["error", "0.8.30"],
+    "private-vars-leading-underscore": "off",
+    "max-line-length": "off",
+    "reason-string": "off",
+    "import-path-check": "off",
+    "one-contract-per-file": "off",
+    "immutable-vars-naming": "off",
+    "func-visibility": ["error", {"ignoreConstructors": true}],
+    "ordering": "off"
+  }
+}

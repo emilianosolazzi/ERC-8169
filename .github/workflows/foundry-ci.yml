@@ -36,3 +36,51 @@ jobs:
 
       - name: Test
         run: forge test --gas-report
+
+      - name: Invariant tests (FFI enabled)
+        run: forge test --match-path tests/ERC721H_Invariant.t.sol --ffi
+
+  static-analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Install dependencies
+        run: |
+          forge install --no-git --no-commit foundry-rs/forge-std
+          forge install --no-git --no-commit OpenZeppelin/openzeppelin-contracts
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install solhint
+        run: npm ci
+
+      - name: Run solhint
+        run: npm run solhint
+
+      - name: Install Slither and Mythril
+        run: |
+          python -m pip install --upgrade pip
+          pip install slither-analyzer mythril
+
+      - name: Run Slither
+        run: slither . --config-file slither.config.json || true
+
+      - name: Run Mythril
+        run: myth analyze src/ERC-721H.sol --solv 0.8.30 --execution-timeout 120 || true

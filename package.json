@@ -1,0 +1,12 @@
+{
+  "name": "erc-8169",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Static analysis and lint tooling for ERC-8169",
+  "scripts": {
+    "solhint": "solhint \"src/**/*.sol\""
+  },
+  "devDependencies": {
+    "solhint": "^5.0.5"
+  }
+}
