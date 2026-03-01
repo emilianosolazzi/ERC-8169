@@ -298,6 +298,35 @@ document/EIP/
 
 ERC-721H preserves ERC-721 interfaces and ecosystem compatibility, but is a **behaviorally constrained variant** when self-transfer prevention and/or transfer cooldown are enabled. Every ERC-721H token remains a valid ERC-721 contract integration target for wallets, marketplaces, and libraries, while adding historical state semantics and optional transfer constraints.
 
+## Reviewer Validation Matrix
+
+Run these to reproduce ERC-review-focused evidence:
+
+```bash
+# Full regression (unit + fuzz + invariants)
+forge test
+
+# Gas scenarios (mint, cold transfer, warm transfer surrogate,
+# re-transfer path, cooldown-hit revert)
+forge test --match-path tests/ERC721H_Gas.t.sol --gas-report
+
+# Compatibility flows (approval operator, safeTransferFrom, receiver behavior, cooldown guidance)
+forge test --match-path tests/ERC721H_Compatibility.t.sol
+
+# Cross-implementation smoke tests (local + optional rollup forks)
+forge test --match-path tests/ERC721H_RollupForks.t.sol
+```
+
+Optional fork env vars for rollup behavior checks:
+
+```bash
+export OPTIMISM_RPC_URL="https://..."
+export ARBITRUM_RPC_URL="https://..."
+forge test --match-path tests/ERC721H_RollupForks.t.sol
+```
+
+When RPC URLs are not set, rollup fork tests are skipped by design and local Anvil smoke behavior still executes.
+
 ## Author
 
 **Emiliano Solazzi** — 2026

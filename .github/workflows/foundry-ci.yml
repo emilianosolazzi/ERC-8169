@@ -37,8 +37,17 @@ jobs:
       - name: Test
         run: forge test --gas-report
 
+      - name: Gas benchmark scenarios
+        run: forge test --match-path tests/ERC721H_Gas.t.sol --gas-report
+
       - name: Invariant tests (FFI enabled)
         run: forge test --match-path tests/ERC721H_Invariant.t.sol --ffi
+
+      - name: Compatibility tests
+        run: forge test --match-path tests/ERC721H_Compatibility.t.sol
+
+      - name: Rollup fork smoke tests
+        run: forge test --match-path tests/ERC721H_RollupForks.t.sol
 
   static-analysis:
     runs-on: ubuntu-latest

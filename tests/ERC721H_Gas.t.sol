@@ -15,63 +15,105 @@ contract ERC721H_GasTest is Test {
         nft = new ERC721H("GasTest", "GAS", ERC721HStorageLib.HistoryMode.FULL);
     }
 
+    /// @notice Baseline mint benchmark.
     function test_Gas_Mint() public {
         uint256 gasBefore = gasleft();
         nft.mint(alice);
         uint256 gasUsed = gasBefore - gasleft();
-        console.log("Mint gas used:", gasUsed);
+        console.log("Mint gas used (benchmark):", gasUsed);
     }
 
-    function test_Gas_FirstTransfer() public {
+    /// @notice Cold transfer benchmark (fresh token state path).
+    function test_Gas_Transfer_Cold() public {
         nft.mint(alice);
         vm.roll(block.number + 1);
-        
-        vm.prank(alice);
-        nft.approve(bob, 1);
-        
+
         uint256 gasBefore = gasleft();
         vm.prank(alice);
         nft.transferFrom(alice, bob, 1);
         uint256 gasUsed = gasBefore - gasleft();
-        console.log("First transfer gas used:", gasUsed);
+        console.log("Transfer gas used (cold path):", gasUsed);
     }
 
-    function test_Gas_SecondTransfer() public {
-        // This measures a transfer after mint (in a new TX context)
+    /// @notice Warm transfer surrogate benchmark.
+    /// @dev Warms common read slots in the same call context before transfer.
+    function test_Gas_Transfer_WarmSurrogate() public {
         nft.mint(alice);
         vm.roll(block.number + 1);
-        
+
+        nft.ownerOf(1);
+        nft.balanceOf(alice);
+        nft.getHistoryLength(1);
+
         uint256 gasBefore = gasleft();
         vm.prank(alice);
         nft.transferFrom(alice, bob, 1);
         uint256 gasUsed = gasBefore - gasleft();
-        console.log("Second transfer gas used (to new owner):", gasUsed);
+        console.log("Transfer gas used (warm surrogate path):", gasUsed);
     }
 
-    function test_Gas_TransferToRepeatOwner() public {
-        // Mint to alice, transfer to bob
-        nft.mint(alice);
-        // Note: Sybil guard (oneTransferPerTokenPerTx) prevents same-token
-        // multi-transfer within a single TX. In production, bob → alice would
-        // happen in a separate TX. Here we measure a SINGLE transfer to a
-        // repeat owner to confirm the dedup optimization (skip _everOwnedTokens push).
+    /// @notice Re-transfer same owner path benchmark (dedup path).
+    /// @dev Intra-TX Sybil guard prevents multiple same-token transfers in one test call,
+    ///      so this benchmark uses a proxy signal: recipient already owns another token.
+    ///      This exercises a warm owner-accounting path used by repeat ownership workflows.
+    function test_Gas_ReTransferSameOwner_Path() public {
+        nft.mint(alice);    // tokenId 1
+        nft.mint(bob);      // tokenId 2, bob already appears as owner in collection state
+
         vm.roll(block.number + 1);
         vm.prank(alice);
         nft.transferFrom(alice, bob, 1);
-        
-        // Gas measurement: note Sybil guard prevents doing bob→alice in same TX
-        // So we just measure the alice→bob transfer above which includes hasOwnedToken check
-        uint256 gasUsed = 0; // Measured inline above
-        console.log("Transfer to new owner gas used (includes dedup check):", gasUsed);
+
+        vm.roll(block.number + 1);
+        uint256 gasBefore = gasleft();
+        vm.prank(bob);
+        nft.transferFrom(bob, charlie, 2);
+        uint256 gasUsed = gasBefore - gasleft();
+        console.log("Re-transfer same-owner path gas used:", gasUsed);
+    }
+
+    /// @notice Cooldown-hit benchmark (expected revert path cost surface).
+    function test_Gas_CooldownHit() public {
+        nft.mint(alice);
+        nft.setTransferCooldown(10);
+
+        vm.roll(block.number + 1);
+        uint256 gasBefore = gasleft();
+        vm.prank(alice);
+        vm.expectRevert(ERC721H.TransferCooldownActive.selector);
+        nft.transferFrom(alice, bob, 1);
+        uint256 gasUsed = gasBefore - gasleft();
+        console.log("Cooldown-hit revert gas used:", gasUsed);
+    }
+
+    function test_Gas_Transfer_Cold_vs_WarmSurrogate_Delta() public {
+        nft.mint(alice);
+        nft.mint(alice);
+
+        vm.roll(block.number + 1);
+        uint256 coldBefore = gasleft();
+        vm.prank(alice);
+        nft.transferFrom(alice, bob, 1);
+        uint256 coldUsed = coldBefore - gasleft();
+
+        vm.roll(block.number + 1);
+        nft.ownerOf(2);
+        nft.balanceOf(alice);
+        nft.getHistoryLength(2);
+
+        uint256 warmBefore = gasleft();
+        vm.prank(alice);
+        nft.transferFrom(alice, bob, 2);
+        uint256 warmUsed = warmBefore - gasleft();
+
+        console.log("Cold transfer gas:", coldUsed);
+        console.log("Warm surrogate transfer gas:", warmUsed);
     }
 
     function test_Gas_SafeTransferFrom() public {
         nft.mint(alice);
         vm.roll(block.number + 1);
-        
-        vm.prank(alice);
-        nft.approve(bob, 1);
-        
+
         uint256 gasBefore = gasleft();
         vm.prank(alice);
         nft.safeTransferFrom(alice, bob, 1);
