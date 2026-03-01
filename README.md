@@ -227,11 +227,13 @@ const isHistorical = await nft.supportsInterface(IERC721H_ID);
 - **O(1) Lookups**: `hasEverOwned()` uses a dedicated mapping — no unbounded iteration.
 - **Deduplication**: `_everOwnedTokens` deduped via `_hasOwnedToken` — wash trading cannot bloat per-address lists.
 - **Self-Transfer Prevention**: `from == to` reverts with `InvalidRecipient()` — blocks history pollution without real ownership change.
+- **ERC-721 Behavioral Divergence**: Optional cooldown (`transferCooldownBlocks`) and self-transfer prevention intentionally make this a constrained ERC-721 variant, not a pure behavioral superset.
 - **Burn Semantics**: `totalSupply()` decrements on burn; `totalMinted()` does not. `HistoricalTokenBurned` event signals Layer-3-only deletion to indexers.
 - **Sybil Protection (Dual-Layer)**:
   - **Intra-TX**: `oneTransferPerTokenPerTx` modifier using EIP-1153 transient storage blocks A→B→C→D chains within one transaction
-  - **Inter-TX**: Derived from `_ownershipBlocks[tokenId]` — if the last recorded block equals `block.number`, the transfer reverts with `OwnerAlreadyRecordedForBlock()`. No dedicated mapping needed (eliminated in v1.5.0). Uses `block.number`, not `block.timestamp`, to prevent validator manipulation.
+  - **Inter-TX**: Uses `lastTransferBlock[tokenId]` — if the last recorded block equals `block.number`, transfer reverts with `OwnerAlreadyRecordedForBlock()`. Uses `block.number`, not `block.timestamp`, to prevent validator manipulation.
 - **O(log n) Historical Queries**: `getOwnerAtBlock()` uses binary search over `_ownershipBlocks[]` to resolve the owner at any arbitrary past block — not just transfer blocks.
+- **COMPRESSED Proof Model**: `getHistoryHash(tokenId)` exposes only the latest commitment hash, not per-step hashes. Inclusion is verified off-chain by replaying the ordered transfer sequence and recomputing the chain (`H0 = keccak256(0x00, owner, block, timestamp)`, `Hn = keccak256(Hn-1, owner, block, timestamp)`) then comparing the final hash.
 - **ERC-165**: `supportsInterface()` returns `true` for ERC-165, ERC-721, ERC-721 Metadata, and IERC721H. The ERC-721H interface ID is computed deterministically as `type(IERC721H).interfaceId` (XOR of all function selectors in the interface).
 
 ## Repository Structure
@@ -294,7 +296,7 @@ document/EIP/
 
 ## Backwards Compatibility
 
-ERC-721H is a **strict superset** of ERC-721. Every ERC-721H token is a valid ERC-721 token. Wallets (MetaMask, Rainbow), marketplaces (OpenSea, Blur), and libraries (ethers.js, viem, wagmi) work without modification. The historical layer is purely additive. ERC721HCollection inherits full ERC-721 compatibility.
+ERC-721H preserves ERC-721 interfaces and ecosystem compatibility, but is a **behaviorally constrained variant** when self-transfer prevention and/or transfer cooldown are enabled. Every ERC-721H token remains a valid ERC-721 contract integration target for wallets, marketplaces, and libraries, while adding historical state semantics and optional transfer constraints.
 
 ## Author
 

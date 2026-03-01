@@ -7,6 +7,7 @@ pragma solidity 0.8.30;
  * @notice Manages Layer 1 (Immutable Origin) and Layer 2 (Historical Trail) storage.
  * @dev All functions are `internal` and inlined at compile time — zero runtime gas overhead.
  *      Callers maintain a single `HistoryStorage` struct that holds all ownership mappings.
+ *      History mode is owned by the caller contract and passed into write functions.
  *
  *      HistoryStorage contains:
  *        Layer 1: originalCreator, mintBlock, createdTokens
@@ -53,9 +54,6 @@ library ERC721HStorageLib {
     // ──────────────────────────────────────────────
 
     struct HistoryStorage {
-        /// @dev History mode — set once at construction.
-        HistoryMode mode;
-
         /// @dev Layer 1: Immutable Origin
         mapping(uint256 => address) originalCreator;
         mapping(uint256 => uint256) mintBlock;
@@ -95,7 +93,8 @@ library ERC721HStorageLib {
         uint256 tokenId,
         address to,
         uint256 blockNum,
-        uint256 timestamp
+        uint256 timestamp,
+        HistoryMode mode
     ) internal {
         // Layer 1: immutable origin (always recorded regardless of mode)
         self.originalCreator[tokenId] = to;
@@ -103,13 +102,13 @@ library ERC721HStorageLib {
         self.lastTransferBlock[tokenId] = blockNum;
 
         // Layer 2: mode-dependent history recording
-        if (self.mode == HistoryMode.FULL) {
+        if (mode == HistoryMode.FULL) {
             self.createdTokens[to].push(tokenId);
             self.ownershipHistory[tokenId].push(to);
             self.ownershipTimestamps[tokenId].push(timestamp);
             self.ownershipBlocks[tokenId].push(blockNum);
             self.everOwnedTokens[to].push(tokenId);
-        } else if (self.mode == HistoryMode.COMPRESSED) {
+        } else if (mode == HistoryMode.COMPRESSED) {
             self.createdTokens[to].push(tokenId);
             // Initialize hash chain: H₀ = keccak256(0x00, to, blockNum, timestamp)
             self.historyHash[tokenId] = keccak256(
@@ -130,11 +129,12 @@ library ERC721HStorageLib {
         uint256 tokenId,
         address to,
         uint256 blockNum,
-        uint256 timestamp
+        uint256 timestamp,
+        HistoryMode mode
     ) internal {
         self.lastTransferBlock[tokenId] = blockNum;
 
-        if (self.mode == HistoryMode.FULL) {
+        if (mode == HistoryMode.FULL) {
             self.ownershipHistory[tokenId].push(to);
             self.ownershipTimestamps[tokenId].push(timestamp);
             self.ownershipBlocks[tokenId].push(blockNum);
@@ -142,7 +142,7 @@ library ERC721HStorageLib {
             if (!self.hasOwnedToken[tokenId][to]) {
                 self.everOwnedTokens[to].push(tokenId);
             }
-        } else if (self.mode == HistoryMode.COMPRESSED) {
+        } else if (mode == HistoryMode.COMPRESSED) {
             // Hₙ = keccak256(Hₙ₋₁, to, blockNum, timestamp)
             self.historyHash[tokenId] = keccak256(
                 abi.encodePacked(self.historyHash[tokenId], to, blockNum, timestamp)
@@ -320,17 +320,6 @@ library ERC721HStorageLib {
         for (uint256 i = 0; i < sliceLen; i++) {
             tokenIds[i] = self.createdTokens[creator][start + i];
         }
-    }
-
-    // ──────────────────────────────────────────────
-    //  History Mode Queries
-    // ──────────────────────────────────────────────
-
-    /// @notice Returns the current history mode.
-    function getMode(
-        HistoryStorage storage self
-    ) internal view returns (HistoryMode) {
-        return self.mode;
     }
 
     /// @notice Returns the COMPRESSED-mode hash chain commitment for `tokenId`.

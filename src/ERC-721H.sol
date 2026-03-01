@@ -126,6 +126,7 @@ contract ERC721H is IERC721H, IERC721, IERC721Metadata {
     ///        L2 (fast):     50–300 blocks (~1–5 minutes on Arbitrum/Base)
     ///        L2 (anti-wash): 1800+ blocks (~30+ minutes)
     uint256 public transferCooldownBlocks;
+    ERC721HStorageLib.HistoryMode private immutable _historyMode;
     
     // ==========================================
     // LAYER 1 & 2: HISTORICAL OWNERSHIP (Library)
@@ -173,7 +174,7 @@ contract ERC721H is IERC721H, IERC721, IERC721Metadata {
         _nextTokenId = 1;
         owner = msg.sender;
         _locked = false;
-        _history.mode = mode_;
+        _historyMode = mode_;
     }
     
     // ==========================================
@@ -320,7 +321,7 @@ contract ERC721H is IERC721H, IERC721, IERC721Metadata {
         _beforeTokenTransfer(address(0), to, tokenId);
         
         // LAYER 1 & 2: Record origin + first history entry (via library)
-        _history.recordMint(tokenId, to, block.number, block.timestamp);
+        _history.recordMint(tokenId, to, block.number, block.timestamp, _historyMode);
         emit OriginalCreatorRecorded(tokenId, to);
         emit OwnershipHistoryRecorded(tokenId, to, block.timestamp);
         
@@ -377,7 +378,7 @@ contract ERC721H is IERC721H, IERC721, IERC721Metadata {
         }
 
         // LAYER 2: APPEND to ownership history (via library — auto-deduplicates)
-        _history.recordTransfer(tokenId, to, block.number, block.timestamp);
+        _history.recordTransfer(tokenId, to, block.number, block.timestamp, _historyMode);
         emit OwnershipHistoryRecorded(tokenId, to, block.timestamp);
         
         // LAYER 3: Update current owner (standard ERC-721)
@@ -505,7 +506,7 @@ contract ERC721H is IERC721H, IERC721, IERC721Metadata {
     /// @notice Returns the configured history mode for this contract.
     /// @dev 0=FULL, 1=FLAG_ONLY, 2=COMPRESSED. Immutable after construction.
     function historyMode() public view returns (ERC721HStorageLib.HistoryMode) {
-        return _history.getMode();
+        return _historyMode;
     }
 
     /// @notice Returns the hash-chain commitment for `tokenId` (COMPRESSED mode only).
