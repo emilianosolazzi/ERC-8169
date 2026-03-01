@@ -2,6 +2,8 @@
 pragma solidity 0.8.30;
 
 import {IERC721H} from "./IERC721H.sol";
+import {IERC721HCore} from "./IERC721HCore.sol";
+import {IERC721HAnalytics} from "./IERC721HAnalytics.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC721Metadata} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import {ERC721HStorageLib} from "./ERC721HStorageLib.sol";
@@ -74,7 +76,7 @@ import {ERC721HCoreLib} from "./ERC721HCoreLib.sol";
  * 
  * @custom:version 2.1.0
  */
-contract ERC721H is IERC721H, IERC721, IERC721Metadata { 
+contract ERC721H is IERC721HCore, IERC721HAnalytics, IERC721, IERC721Metadata { 
     using ERC721HStorageLib for ERC721HStorageLib.HistoryStorage;
     using ERC721HCoreLib for ERC721HStorageLib.HistoryStorage;
 
@@ -731,7 +733,9 @@ contract ERC721H is IERC721H, IERC721, IERC721Metadata {
         return interfaceId == 0x01ffc9a7 || // ERC-165
                interfaceId == 0x80ac58cd || // ERC-721
                interfaceId == 0x5b5e139f || // ERC-721 Metadata
-               interfaceId == type(IERC721H).interfaceId; // ERC-721H
+               interfaceId == type(IERC721HCore).interfaceId || // ERC-721H Core
+               interfaceId == type(IERC721HAnalytics).interfaceId || // ERC-721H Analytics (optional)
+               interfaceId == type(IERC721H).interfaceId; // ERC-721H Legacy Aggregate
     }
     
     // ==========================================

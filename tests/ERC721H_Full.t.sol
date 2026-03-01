@@ -4,6 +4,9 @@ pragma solidity 0.8.30;
 import "forge-std/Test.sol";
 import {ERC721H} from "../src/ERC-721H.sol";
 import {ERC721HStorageLib} from "../src/ERC721HStorageLib.sol";
+import {IERC721H} from "../src/IERC721H.sol";
+import {IERC721HCore} from "../src/IERC721HCore.sol";
+import {IERC721HAnalytics} from "../src/IERC721HAnalytics.sol";
 
 interface IERC721Receiver {
     function onERC721Received(
@@ -553,6 +556,18 @@ contract ERC721H_FullTest is Test {
 
     function test_SupportsInterface_ERC721Metadata() public view {
         assertTrue(nft.supportsInterface(0x5b5e139f));
+    }
+
+    function test_SupportsInterface_ERC721HCore() public view {
+        assertTrue(nft.supportsInterface(type(IERC721HCore).interfaceId));
+    }
+
+    function test_SupportsInterface_ERC721HAnalytics() public view {
+        assertTrue(nft.supportsInterface(type(IERC721HAnalytics).interfaceId));
+    }
+
+    function test_SupportsInterface_ERC721HLegacyAggregate() public view {
+        assertTrue(nft.supportsInterface(type(IERC721H).interfaceId));
     }
 
     function test_SupportsInterface_Invalid() public view {

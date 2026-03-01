@@ -236,7 +236,7 @@ const isHistorical = await nft.supportsInterface(IERC721H_ID);
 - **Cooldown Semantics**: Cooldown compares against `lastTransferBlock`, which is initialized at mint; with non-zero cooldown, first post-mint transfer may require waiting the configured block interval.
 - **O(log n) Historical Queries**: `getOwnerAtBlock()` uses binary search over `_ownershipBlocks[]` to resolve the owner at any arbitrary past block — not just transfer blocks.
 - **COMPRESSED Proof Model**: `getHistoryHash(tokenId)` exposes only the latest commitment hash, not per-step hashes. Inclusion is verified off-chain by replaying the ordered transfer sequence and recomputing the chain (`H0 = keccak256(0x00, owner, block, timestamp)`, `Hn = keccak256(Hn-1, owner, block, timestamp)`) then comparing the final hash.
-- **ERC-165**: `supportsInterface()` returns `true` for ERC-165, ERC-721, ERC-721 Metadata, and IERC721H. The ERC-721H interface ID is computed deterministically as `type(IERC721H).interfaceId` (XOR of all function selectors in the interface).
+- **ERC-165**: `supportsInterface()` returns `true` for ERC-165, ERC-721, ERC-721 Metadata, `IERC721HCore` (required), and `IERC721HAnalytics` (optional). Legacy `IERC721H` aggregate ID is also supported for backward compatibility.
 
 ## Repository Structure
 
