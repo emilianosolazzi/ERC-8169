@@ -40,13 +40,18 @@ COMPRESSED exposes final commitment via `getHistoryHash(tokenId)`; proof replay 
 - Storage library: `src/ERC721HStorageLib.sol`
 - Query library: `src/ERC721HCoreLib.sol`
 - Factory + production wrapper: `src/ERC-721HFactory.sol`
+- Compliance framework: `src/compliance/` (ERC-3643-inspired modular regulatory compliance)
+  - `ERC721HCompliant.sol` — reference token with compliance hooks
+  - `ComplianceLib.sol` — module orchestration library
+  - `IdentityRegistry.sol` — shared KYC/AML registry
+  - Modules: `KYCModule`, `CountryRestrictModule`, `MaxHoldersModule`, `LockUpModule`
 
 ## Verified Test Evidence (Current Repo)
 
 Latest full run in this repository:
 
-- **12 suites**
-- **214 tests passed**
+- **13 suites**
+- **289 tests passed**
 - **0 failed**
 
 Coverage includes:
@@ -57,6 +62,7 @@ Coverage includes:
 - Compatibility flows (operator approvals, safe transfers, receivers, cooldown behavior)
 - Rollup smoke tests (local + optional Optimism/Arbitrum forks)
 - Gas scenario tests (mint, cold transfer, warm surrogate, re-transfer path, cooldown-hit)
+- Regulatory compliance (KYC, jurisdiction, holder cap, lock-up, module management, end-to-end pipeline)
 
 ## Reproducible Commands
 
@@ -72,6 +78,9 @@ forge test --match-path tests/ERC721H_Compatibility.t.sol
 
 # Invariants
 forge test --match-path tests/ERC721H_Invariant.t.sol --ffi
+
+# Compliance modules
+forge test --match-path tests/ERC721H_Compliance.t.sol
 
 # Rollup smoke (set RPCs to enable fork checks)
 forge test --match-path tests/ERC721H_RollupForks.t.sol
@@ -103,3 +112,16 @@ ERC-721H is best described as a **state-augmentation extension** for ERC-721-com
 - Tunable tradeoff surface across FULL / FLAG_ONLY / COMPRESSED modes
 
 This is intended for contexts where on-chain historical composability is a first-class requirement.
+
+## Regulatory Compliance
+
+For regulated asset issuance, ERC-721H includes an ERC-3643-inspired modular compliance framework (`src/compliance/`). Compliance modules are pluggable external contracts — they can be added, removed, or swapped at runtime without redeploying the token.
+
+| Module | Enforces | Regulatory Basis |
+|:-------|:---------|:-----------------|
+| KYCModule | Both-party KYC verification | AML/KYC |
+| CountryRestrictModule | Jurisdiction blocklist (ISO 3166-1) | OFAC / sanctions |
+| MaxHoldersModule | Unique holder cap | Reg D Rule 506(b) |
+| LockUpModule | Time-based transfer restrictions | Reg S / Reg D holding periods |
+
+The reference implementation (`ERC721HCompliant`) inherits `ERC721H` and wires compliance checks into `_beforeTokenTransfer` / `_afterTokenTransfer` hooks. A shared `IdentityRegistry` stores KYC state (country, verification level) and is queried by modules at transfer time.

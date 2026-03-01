@@ -248,9 +248,21 @@ src/
 ├── ERC-721H.sol             Core contract (v2.1.0) -- 3-layer ownership, 3 history modes
 ├── ERC721HStorageLib.sol    Library -- low-level storage, Sybil guard, binary search, pagination
 ├── ERC721HCoreLib.sol       Library -- provenance report, transfer count, early adopter
-└── ERC-721HFactory.sol      Factory (CREATE2) + ERC721HCollection (production wrapper)
+├── ERC-721HFactory.sol      Factory (CREATE2) + ERC721HCollection (production wrapper)
+└── compliance/              ERC-3643-inspired modular regulatory compliance framework
+    ├── IComplianceModule.sol    Pluggable compliance check interface
+    ├── IIdentityRegistry.sol    KYC/AML identity attestation interface
+    ├── IdentityRegistry.sol     Reference registry (ISO 3166-1, KYC levels 0-3)
+    ├── ComplianceLib.sol        Orchestration library (max 10 modules, enforceTransfer)
+    ├── ERC721HCompliant.sol     Reference token with compliance hooks wired
+    └── modules/
+        ├── KYCModule.sol            Both-party KYC verification
+        ├── CountryRestrictModule.sol Jurisdiction blocklist
+        ├── MaxHoldersModule.sol      Unique holder cap (Reg D)
+        └── LockUpModule.sol          Global + per-token time-based locks (Reg S/D)
 tests/
 ├── ERC721H_Full.t.sol
+├── ERC721H_Compliance.t.sol   75 compliance module tests
 ├── ERC721H_HistoryModes.t.sol
 ├── ERC721H_Cooldown.t.sol
 ├── ERC721H_Factory.t.sol
@@ -267,10 +279,11 @@ document/EIP/
 5. **Storage Library**: `src/ERC721HStorageLib.sol` — HistoryStorage struct, recordMint/recordTransfer, binary search, Sybil guard, pagination
 6. **Core Library**: `src/ERC721HCoreLib.sol` — buildProvenanceReport, getTransferCount, isEarlyAdopter
 7. **Factory + Collection**: `src/ERC-721HFactory.sol` — permissionless CREATE2 deployer + production wrapper with batch mint, batch queries, supply cap, public mint
-8. **EIP Document**: `document/EIP/erc-8169.md` — Preamble, Abstract, Motivation, Specification, Rationale, Backwards Compatibility, Reference Implementation, Security Considerations
-9. **Status**: Draft
-10. **Category**: Standards Track → ERC
-11. **Requires**: EIP-165, EIP-721
+8. **Compliance Framework**: `src/compliance/` — ERC-3643-inspired modular regulatory compliance with pluggable modules (KYC, country restriction, holder cap, lock-up), identity registry, and orchestration library
+9. **EIP Document**: `document/EIP/erc-8169.md` — Preamble, Abstract, Motivation, Specification, Rationale, Backwards Compatibility, Reference Implementation, Security Considerations
+10. **Status**: Draft
+11. **Category**: Standards Track → ERC
+12. **Requires**: EIP-165, EIP-721
 
 
 ## Architecture (v2.1.0)
@@ -291,6 +304,13 @@ document/EIP/
 │  ERC-721H.sol (core contract)                      │
 │    uses ERC721HStorageLib  (storage, Sybil, search)│
 │    uses ERC721HCoreLib     (provenance, analytics) │
+├───────────────────────────────────────────────────┤
+│  ERC721HCompliant (regulatory compliance wrapper)  │
+│    inherits ERC721H                                │
+│    + _beforeTokenTransfer → ComplianceLib          │
+│    + _afterTokenTransfer  → MaxHoldersModule       │
+│    + pluggable modules: KYC, Country, LockUp, Cap  │
+│    + IdentityRegistry (shared KYC/AML registry)    │
 └───────────────────────────────────────────────────┘
 ```
 
@@ -299,6 +319,45 @@ document/EIP/
 - Libraries use `internal` functions → inlined at compile time, zero external call overhead
 - Factory deploys full contracts (not clones) → no delegatecall risks, no initializer footguns
 - CREATE2 with deployer-mixed salt → deterministic cross-chain addresses, front-run resistant
+
+## Regulatory Compliance (ERC-3643-Inspired)
+
+For regulated asset issuance (security tokens, RWAs), ERC-721H includes a modular compliance framework under `src/compliance/`:
+
+```solidity
+import {ERC721HCompliant} from "./compliance/ERC721HCompliant.sol";
+import {IdentityRegistry} from "./compliance/IdentityRegistry.sol";
+import {KYCModule} from "./compliance/modules/KYCModule.sol";
+import {CountryRestrictModule} from "./compliance/modules/CountryRestrictModule.sol";
+
+// 1. Deploy identity registry + register investors
+IdentityRegistry registry = new IdentityRegistry();
+registry.registerIdentity(investor, 840, 2); // US, enhanced KYC
+
+// 2. Deploy compliance modules
+KYCModule kyc = new KYCModule(address(registry), 1);  // min KYC level 1
+uint16[] memory blocked = new uint16[](2);
+blocked[0] = 408; blocked[1] = 364; // KP, IR
+CountryRestrictModule country = new CountryRestrictModule(address(registry), blocked);
+
+// 3. Deploy compliant token + wire modules
+ERC721HCompliant token = new ERC721HCompliant("SecurityNFT", "SEC", HistoryMode.FULL);
+token.addComplianceModule(IComplianceModule(address(kyc)));
+token.addComplianceModule(IComplianceModule(address(country)));
+
+// Transfers now enforce KYC + jurisdiction checks automatically
+```
+
+**Modules are external contracts** — swap them without redeploying the token:
+
+| Module | Purpose | Regulatory Basis |
+|:-------|:--------|:-----------------|
+| `KYCModule` | Both-party KYC verification, configurable level | AML/KYC |
+| `CountryRestrictModule` | Jurisdiction blocklist (ISO 3166-1) | OFAC / sanctions |
+| `MaxHoldersModule` | Cap unique holders (tracks via `_afterTokenTransfer`) | Reg D Rule 506(b) |
+| `LockUpModule` | Global + per-token time-based transfer locks | Reg S / Reg D holding periods |
+
+See `tests/ERC721H_Compliance.t.sol` for 75 integration tests covering the full compliance pipeline.
 
 ## Backwards Compatibility
 

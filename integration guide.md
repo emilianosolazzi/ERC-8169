@@ -203,7 +203,7 @@ This avoids integration drift as interfaces evolve.
 Use these exact commands for reproducible checks:
 
 ```bash
-# Full suite (unit + fuzz + invariants)
+# Full suite (unit + fuzz + invariants + compliance)
 forge test
 
 # Gas scenarios: mint, cold transfer, warm surrogate, re-transfer path, cooldown hit
@@ -211,6 +211,9 @@ forge test --match-path tests/ERC721H_Gas.t.sol --gas-report
 
 # Compatibility flows: operator approvals, safeTransferFrom, receiver contracts, cooldown behavior
 forge test --match-path tests/ERC721H_Compatibility.t.sol
+
+# Compliance module tests: KYC, country, lock-up, holder cap, end-to-end pipeline
+forge test --match-path tests/ERC721H_Compliance.t.sol
 
 # Rollup behavior smoke tests (local + optional forks)
 forge test --match-path tests/ERC721H_RollupForks.t.sol
@@ -231,9 +234,94 @@ If RPC vars are unset, fork-specific tests skip and local smoke still runs.
   - same block transfer blocked
   - cooldown window active
   - self-transfer invalid
+  - compliance check failed (KYC, jurisdiction, lock-up, holder cap)
 - When showing owners at historical blocks:
-  - treat zero-address as “no recorded owner at that query point or mode limitation”
+  - treat zero-address as "no recorded owner at that query point or mode limitation"
 - In non-FULL modes, hide full-history UI and show mode-aware text.
+- For compliant tokens, call `isTransferCompliant(from, to, tokenId)` before attempting transfers to surface specific failures to the user.
+
+## 12) Regulatory Compliance Integration
+
+ERC-721H includes an optional ERC-3643-inspired compliance framework under `src/compliance/`. This is useful for security tokens, RWAs, and any regulated asset issuance.
+
+### Architecture
+
+```
+ERC721HCompliant (inherits ERC721H)
+  └─ _beforeTokenTransfer() → ComplianceLib.enforceTransfer()
+       ├─ KYCModule.canTransfer()          ← both parties verified?
+       ├─ CountryRestrictModule.canTransfer() ← jurisdiction allowed?
+       ├─ MaxHoldersModule.canTransfer()    ← holder cap check
+       └─ LockUpModule.canTransfer()       ← lock-up expired?
+  └─ _afterTokenTransfer() → MaxHoldersModule.onTransferCompleted()
+```
+
+### Deployment Steps
+
+```solidity
+// 1. Deploy shared identity registry
+IdentityRegistry registry = new IdentityRegistry();
+registry.registerIdentity(investor, 840, 2); // US, enhanced KYC
+
+// 2. Deploy modules
+KYCModule kyc = new KYCModule(address(registry), 1);
+uint16[] memory blocked = new uint16[](2);
+blocked[0] = 408; blocked[1] = 364; // KP, IR
+CountryRestrictModule country = new CountryRestrictModule(address(registry), blocked);
+MaxHoldersModule holders = new MaxHoldersModule(35); // Reg D cap
+LockUpModule lockUp = new LockUpModule();
+
+// 3. Deploy compliant token
+ERC721HCompliant token = new ERC721HCompliant("SecurityNFT", "SEC", HistoryMode.FULL);
+
+// 4. Wire modules
+token.addComplianceModule(IComplianceModule(address(kyc)));
+token.addComplianceModule(IComplianceModule(address(country)));
+token.addComplianceModule(IComplianceModule(address(holders)));
+token.addComplianceModule(IComplianceModule(address(lockUp)));
+
+// 5. Authorize token contract on stateful modules
+holders.setTokenContract(address(token));
+lockUp.setTokenContract(address(token));
+token.setMaxHoldersModule(holders);
+```
+
+### Pre-flight Transfer Check
+
+```ts
+// Check compliance before attempting transfer (avoids wasted gas)
+const compliant = await token.isTransferCompliant(from, to, tokenId);
+if (!compliant) {
+  // Surface specific module failure to user
+  console.log("Transfer blocked by compliance rules");
+}
+```
+
+### Module Swap at Runtime
+
+Modules are external contracts — upgrade compliance rules without redeploying the token:
+
+```solidity
+// Deploy updated KYC module with stricter requirements
+KYCModule kycV2 = new KYCModule(address(registry), 2); // min level 2
+
+// Hot-swap
+token.removeComplianceModule(IComplianceModule(address(kycV1)));
+token.addComplianceModule(IComplianceModule(address(kycV2)));
+```
+
+### Available Modules
+
+| Module | Purpose | Regulatory Basis |
+|:-------|:--------|:-----------------|
+| `KYCModule` | Verify both parties have active KYC | AML/KYC |
+| `CountryRestrictModule` | Block restricted jurisdictions (ISO 3166-1) | OFAC / sanctions |
+| `MaxHoldersModule` | Cap unique token holders | Reg D Rule 506(b) |
+| `LockUpModule` | Global + per-token time-based locks | Reg S / Reg D holding periods |
+
+### Gas Impact
+
+Each module adds ~2,600–5,000 gas per transfer (external STATICCALL). With 4 modules, expect ~10,000–20,000 gas overhead — negligible on L2.
 
 ---
 
