@@ -29,22 +29,25 @@ library ERC721HCoreLib {
         address[] memory allOwners,
         uint256[] memory transferTimestamps
     ) {
+        uint256 histLen = self.ownershipHistory[tokenId].length;
         return (
             self.originalCreator[tokenId],
             self.mintBlock[tokenId],
             currentOwner,
-            self.ownershipHistory[tokenId].length - 1,
+            histLen > 0 ? histLen - 1 : 0, // 0 in FLAG_ONLY / COMPRESSED (no arrays)
             self.ownershipHistory[tokenId],
             self.ownershipTimestamps[tokenId]
         );
     }
 
     /// @notice Returns the number of transfers for `tokenId` (excludes mint).
+    /// @dev Returns 0 in FLAG_ONLY and COMPRESSED modes — no ownership arrays are stored.
     function getTransferCount(
         ERC721HStorageLib.HistoryStorage storage self,
         uint256 tokenId
     ) internal view returns (uint256) {
-        return self.ownershipHistory[tokenId].length - 1;
+        uint256 len = self.ownershipHistory[tokenId].length;
+        return len > 0 ? len - 1 : 0;
     }
 
     /// @notice Returns true if `account` minted any token at or before `blockThreshold`.
