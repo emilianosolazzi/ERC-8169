@@ -75,9 +75,10 @@ cp src/ERC-721HFactory.sol    your-project/contracts/  # optional -- factory + c
 
 ```solidity
 import {ERC721H} from "./ERC-721H.sol";
+import {ERC721HStorageLib} from "./ERC721HStorageLib.sol";
 
 contract MyNFT is ERC721H {
-    constructor() ERC721H("MyCollection", "MYC") {}
+  constructor() ERC721H("MyCollection", "MYC", ERC721HStorageLib.HistoryMode.FULL) {}
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         // Your metadata logic
@@ -232,6 +233,7 @@ const isHistorical = await nft.supportsInterface(IERC721H_ID);
 - **Sybil Protection (Dual-Layer)**:
   - **Intra-TX**: `oneTransferPerTokenPerTx` modifier using EIP-1153 transient storage blocks A→B→C→D chains within one transaction
   - **Inter-TX**: Uses `lastTransferBlock[tokenId]` — if the last recorded block equals `block.number`, transfer reverts with `OwnerAlreadyRecordedForBlock()`. Uses `block.number`, not `block.timestamp`, to prevent validator manipulation.
+- **Cooldown Semantics**: Cooldown compares against `lastTransferBlock`, which is initialized at mint; with non-zero cooldown, first post-mint transfer may require waiting the configured block interval.
 - **O(log n) Historical Queries**: `getOwnerAtBlock()` uses binary search over `_ownershipBlocks[]` to resolve the owner at any arbitrary past block — not just transfer blocks.
 - **COMPRESSED Proof Model**: `getHistoryHash(tokenId)` exposes only the latest commitment hash, not per-step hashes. Inclusion is verified off-chain by replaying the ordered transfer sequence and recomputing the chain (`H0 = keccak256(0x00, owner, block, timestamp)`, `Hn = keccak256(Hn-1, owner, block, timestamp)`) then comparing the final hash.
 - **ERC-165**: `supportsInterface()` returns `true` for ERC-165, ERC-721, ERC-721 Metadata, and IERC721H. The ERC-721H interface ID is computed deterministically as `type(IERC721H).interfaceId` (XOR of all function selectors in the interface).
@@ -261,13 +263,13 @@ document/EIP/
 3. **Storage Library**: `src/ERC721HStorageLib.sol` — HistoryStorage struct, recordMint/recordTransfer, binary search, Sybil guard, pagination
 4. **Core Library**: `src/ERC721HCoreLib.sol` — buildProvenanceReport, getTransferCount, isEarlyAdopter
 5. **Factory + Collection**: `src/ERC-721HFactory.sol` — permissionless CREATE2 deployer + production wrapper with batch mint, batch queries, supply cap, public mint
-6. **EIP Document**: `EIP-721H.md` — Preamble, Abstract, Motivation, Specification (21 behavioral requirements), Rationale, Backwards Compatibility, Reference Implementation, Security Considerations
+6. **EIP Document**: `document/EIP/erc-8169.md` — Preamble, Abstract, Motivation, Specification, Rationale, Backwards Compatibility, Reference Implementation, Security Considerations
 7. **Status**: Draft
 8. **Category**: Standards Track → ERC
 9. **Requires**: EIP-165, EIP-721
 
 
-## Architecture (v2.0.0)
+## Architecture (v2.1.0)
 
 ```
 ┌───────────────────────────────────────────────────┐
