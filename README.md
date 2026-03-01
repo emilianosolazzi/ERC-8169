@@ -64,11 +64,11 @@ Layer 1 never changes. Layer 2 only grows. Layer 3 works exactly like ERC-721.
 
 ```bash
 # Copy all source files into your project
-cp IERC721H.sol           your-project/contracts/
-cp ERC-721H.sol           your-project/contracts/
-cp ERC721HStorageLib.sol  your-project/contracts/
-cp ERC721HCoreLib.sol     your-project/contracts/
-cp ERC721HFactory.sol     your-project/contracts/  # optional — factory + collection
+cp src/IERC721H.sol           your-project/contracts/
+cp src/ERC-721H.sol           your-project/contracts/
+cp src/ERC721HStorageLib.sol  your-project/contracts/
+cp src/ERC721HCoreLib.sol     your-project/contracts/
+cp src/ERC-721HFactory.sol    your-project/contracts/  # optional -- factory + collection
 ```
 
 ### Deploy (Direct)
@@ -237,22 +237,28 @@ const isHistorical = await nft.supportsInterface(IERC721H_ID);
 ## Repository Structure
 
 ```
-empty_src/
-├── IERC721H.sol            Interface — 22 functions, 3 events
-├── ERC-721H.sol            Core contract (v2.0.0) — 3-layer ownership
-├── ERC721HStorageLib.sol   Library — low-level storage, Sybil guard, binary search, pagination
-├── ERC721HCoreLib.sol      Library — provenance report, transfer count, early adopter
-├── ERC721HFactory.sol      Factory (CREATE2) + ERC721HCollection (production wrapper)
-├── ERC-721H-Frontend.md    Frontend integration guide (ethers.js v6)
-├── EIP-721H.md             EIP specification
-└── README.md               This file
+src/
+├── IERC721H.sol             Interface -- 22 functions, 3 events
+├── ERC-721H.sol             Core contract (v2.1.0) -- 3-layer ownership, 3 history modes
+├── ERC721HStorageLib.sol    Library -- low-level storage, Sybil guard, binary search, pagination
+├── ERC721HCoreLib.sol       Library -- provenance report, transfer count, early adopter
+└── ERC-721HFactory.sol      Factory (CREATE2) + ERC721HCollection (production wrapper)
+tests/
+├── ERC721H_Full.t.sol
+├── ERC721H_HistoryModes.t.sol
+├── ERC721H_Cooldown.t.sol
+├── ERC721H_Factory.t.sol
+└── ...
+document/EIP/
+└── erc-8169.md              EIP specification
+└── README.md                This file
 ```
 
-1. **Interface**: `IERC721H.sol` — 22 functions, 3 events
-2. **Core Implementation**: `ERC-721H.sol` — v2.0.0, library architecture (1 intentional warning: unused parameter in deprecated `getOwnerAtTimestamp`)
-3. **Storage Library**: `ERC721HStorageLib.sol` — HistoryStorage struct, recordMint/recordTransfer, binary search, Sybil guard, pagination
-4. **Core Library**: `ERC721HCoreLib.sol` — buildProvenanceReport, getTransferCount, isEarlyAdopter
-5. **Factory + Collection**: `ERC721HFactory.sol` — permissionless CREATE2 deployer + production wrapper with batch mint, batch queries, supply cap, public mint
+1. **Interface**: `src/IERC721H.sol` — 22 functions, 3 events
+2. **Core Implementation**: `src/ERC-721H.sol` — v2.1.0, library architecture, 3 history modes (FULL/FLAG_ONLY/COMPRESSED), cooldown guard
+3. **Storage Library**: `src/ERC721HStorageLib.sol` — HistoryStorage struct, recordMint/recordTransfer, binary search, Sybil guard, pagination
+4. **Core Library**: `src/ERC721HCoreLib.sol` — buildProvenanceReport, getTransferCount, isEarlyAdopter
+5. **Factory + Collection**: `src/ERC-721HFactory.sol` — permissionless CREATE2 deployer + production wrapper with batch mint, batch queries, supply cap, public mint
 6. **EIP Document**: `EIP-721H.md` — Preamble, Abstract, Motivation, Specification (21 behavioral requirements), Rationale, Backwards Compatibility, Reference Implementation, Security Considerations
 7. **Status**: Draft
 8. **Category**: Standards Track → ERC
