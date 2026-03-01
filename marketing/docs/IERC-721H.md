@@ -34,7 +34,9 @@ COMPRESSED exposes final commitment via `getHistoryHash(tokenId)`; proof replay 
 ## Reference Contracts
 
 - Core: `src/ERC-721H.sol`
-- Interface: `src/IERC721H.sol`
+- Core interface: `src/IERC721HCore.sol` (required — minimal provenance primitives)
+- Analytics interface: `src/IERC721HAnalytics.sol` (optional — convenience queries, O(n))
+- Legacy aggregate interface: `src/IERC721H.sol` (combines Core + Analytics for backward compat)
 - Storage library: `src/ERC721HStorageLib.sol`
 - Query library: `src/ERC721HCoreLib.sol`
 - Factory + production wrapper: `src/ERC-721HFactory.sol`
@@ -44,7 +46,7 @@ COMPRESSED exposes final commitment via `getHistoryHash(tokenId)`; proof replay 
 Latest full run in this repository:
 
 - **12 suites**
-- **211 tests passed**
+- **214 tests passed**
 - **0 failed**
 
 Coverage includes:
@@ -81,6 +83,16 @@ Optional fork env vars:
 export OPTIMISM_RPC_URL="https://..."
 export ARBITRUM_RPC_URL="https://..."
 ```
+
+## Interface Architecture
+
+The interface surface is split per ERC best practice:
+
+- **`IERC721HCore`** (required) — minimal provenance primitives: origin, mint block, `hasEverOwned` (O(1)), `getOwnerAtBlock` (O(log n)), history pagination, burn. All core view functions are O(1) or O(log n).
+- **`IERC721HAnalytics`** (optional) — convenience queries: provenance reports, per-address enumeration, early adopter detection, supply tracking, deprecated `getOwnerAtTimestamp` (always returns `address(0)`). Functions may be O(n).
+- **`IERC721H`** (legacy aggregate) — combines both for backward compatibility.
+
+ERC-165: `supportsInterface()` returns `true` for Core, Analytics (if implemented), and the legacy aggregate ID.
 
 ## Positioning
 

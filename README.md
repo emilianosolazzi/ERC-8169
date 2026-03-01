@@ -242,7 +242,9 @@ const isHistorical = await nft.supportsInterface(IERC721H_ID);
 
 ```
 src/
-├── IERC721H.sol             Interface -- 22 functions, 3 events
+├── IERC721HCore.sol         Core interface -- required minimal provenance primitives
+├── IERC721HAnalytics.sol    Analytics interface -- optional convenience queries (O(n))
+├── IERC721H.sol             Legacy aggregate interface (Core + Analytics)
 ├── ERC-721H.sol             Core contract (v2.1.0) -- 3-layer ownership, 3 history modes
 ├── ERC721HStorageLib.sol    Library -- low-level storage, Sybil guard, binary search, pagination
 ├── ERC721HCoreLib.sol       Library -- provenance report, transfer count, early adopter
@@ -258,15 +260,17 @@ document/EIP/
 └── README.md                This file
 ```
 
-1. **Interface**: `src/IERC721H.sol` — 22 functions, 3 events
-2. **Core Implementation**: `src/ERC-721H.sol` — v2.1.0, library architecture, 3 history modes (FULL/FLAG_ONLY/COMPRESSED), cooldown guard
-3. **Storage Library**: `src/ERC721HStorageLib.sol` — HistoryStorage struct, recordMint/recordTransfer, binary search, Sybil guard, pagination
-4. **Core Library**: `src/ERC721HCoreLib.sol` — buildProvenanceReport, getTransferCount, isEarlyAdopter
-5. **Factory + Collection**: `src/ERC-721HFactory.sol` — permissionless CREATE2 deployer + production wrapper with batch mint, batch queries, supply cap, public mint
-6. **EIP Document**: `document/EIP/erc-8169.md` — Preamble, Abstract, Motivation, Specification, Rationale, Backwards Compatibility, Reference Implementation, Security Considerations
-7. **Status**: Draft
-8. **Category**: Standards Track → ERC
-9. **Requires**: EIP-165, EIP-721
+1. **Core Interface**: `src/IERC721HCore.sol` — required minimal provenance surface (O(1)/O(log n) views, events)
+2. **Analytics Interface**: `src/IERC721HAnalytics.sol` — optional convenience queries, O(n)-safe for off-chain use
+3. **Legacy Interface**: `src/IERC721H.sol` — backward-compatible aggregate of Core + Analytics
+4. **Core Implementation**: `src/ERC-721H.sol` — v2.1.0, library architecture, 3 history modes (FULL/FLAG_ONLY/COMPRESSED), cooldown guard
+5. **Storage Library**: `src/ERC721HStorageLib.sol` — HistoryStorage struct, recordMint/recordTransfer, binary search, Sybil guard, pagination
+6. **Core Library**: `src/ERC721HCoreLib.sol` — buildProvenanceReport, getTransferCount, isEarlyAdopter
+7. **Factory + Collection**: `src/ERC-721HFactory.sol` — permissionless CREATE2 deployer + production wrapper with batch mint, batch queries, supply cap, public mint
+8. **EIP Document**: `document/EIP/erc-8169.md` — Preamble, Abstract, Motivation, Specification, Rationale, Backwards Compatibility, Reference Implementation, Security Considerations
+9. **Status**: Draft
+10. **Category**: Standards Track → ERC
+11. **Requires**: EIP-165, EIP-721
 
 
 ## Architecture (v2.1.0)

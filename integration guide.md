@@ -120,7 +120,26 @@ Behavior matrix:
   - history arrays are empty
   - use `getHistoryHash(tokenId)` as final hash-chain commitment
 
-`getOwnerAtTimestamp()` is deprecated and always returns `address(0)`.
+`getOwnerAtTimestamp()` is **deprecated** and always returns `address(0)`. Use `getOwnerAtBlock()` instead.
+
+## 5.1) Interface Detection
+
+ERC-721H exposes three ERC-165 interface IDs:
+
+- **`IERC721HCore`** (required) — minimal provenance primitives
+- **`IERC721HAnalytics`** (optional) — convenience queries (may be O(n))
+- **`IERC721H`** (legacy aggregate) — combines both
+
+```ts
+import { IERC721HCore, IERC721HAnalytics, IERC721H } from "./interfaces";
+
+// Detect support level
+const hasCore = await nft.supportsInterface(IERC721H_CORE_ID);
+const hasAnalytics = await nft.supportsInterface(IERC721H_ANALYTICS_ID);
+const hasLegacy = await nft.supportsInterface(IERC721H_LEGACY_ID);
+```
+
+New integrations should check for `IERC721HCore`. The legacy aggregate ID is supported for backward compatibility.
 
 ## 6) Pagination (Large Histories)
 
