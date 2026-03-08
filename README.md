@@ -324,6 +324,10 @@ document/EIP/
 
 For regulated asset issuance (security tokens, RWAs), ERC-721H includes a modular compliance framework under `src/compliance/`:
 
+This gives an RWA institution a contract skeleton that already maps to how regulated issuance is typically reasoned about internally: identity verification, jurisdiction policy, investor limits, holding periods, and immutable provenance. In practice, that means less time spent reinventing transfer controls from scratch and more focus on institution-specific workflows such as onboarding, servicing, custody, reporting, and legal documentation.
+
+The practical benefit is architectural clarity: `ERC721H` handles provenance, `ERC721HCompliant` handles enforcement, and modules express policy. That separation is familiar to compliance, legal, and engineering teams because it keeps the token primitive stable while allowing regulated business rules to evolve.
+
 ```solidity
 import {ERC721HCompliant} from "./compliance/ERC721HCompliant.sol";
 import {IdentityRegistry} from "./compliance/IdentityRegistry.sol";
@@ -356,6 +360,8 @@ token.addComplianceModule(IComplianceModule(address(country)));
 | `CountryRestrictModule` | Jurisdiction blocklist (ISO 3166-1) | OFAC / sanctions |
 | `MaxHoldersModule` | Cap unique holders (tracks via `_afterTokenTransfer`) | Reg D Rule 506(b) |
 | `LockUpModule` | Global + per-token time-based transfer locks | Reg S / Reg D holding periods |
+
+For an institution evaluating this repository as a starting point, the value is not that every operational requirement is already solved; it is that the core on-chain primitives are already separated in the right way. Provenance, policy, and identity are distinct components, which makes the system easier to audit, extend, and adapt to a specific issuance program.
 
 See `tests/ERC721H_Compliance.t.sol` for 75 integration tests covering the full compliance pipeline.
 
