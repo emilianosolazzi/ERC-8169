@@ -51,9 +51,12 @@ contract KYCModule is IComplianceModule {
         if (from == address(0)) {
             return _isCompliant(to);
         }
-        // Burn: check sender only
+        // Burn: ALWAYS allowed. A non-compliant holder (revoked KYC, sanctioned,
+        // re-verification expired) must still be able to burn / be burned so the
+        // issuer retains a recovery path. Without this, tokens become permanently
+        // locked in the wallet once compliance status flips false.
         if (to == address(0)) {
-            return _isCompliant(from);
+            return true;
         }
         // Transfer: check both
         return _isCompliant(from) && _isCompliant(to);
@@ -65,8 +68,11 @@ contract KYCModule is IComplianceModule {
         override
         returns (string memory)
     {
+        // Burns are always allowed regardless of sender KYC status.
+        if (to == address(0)) return "";
+
         bool senderOk = from == address(0) || _isCompliant(from);
-        bool receiverOk = to == address(0) || _isCompliant(to);
+        bool receiverOk = _isCompliant(to);
 
         if (!senderOk && !receiverOk) return "Sender and receiver lack required KYC";
         if (!senderOk) return "Sender lacks required KYC verification";

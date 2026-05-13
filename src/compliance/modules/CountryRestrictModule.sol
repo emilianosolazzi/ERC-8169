@@ -59,9 +59,12 @@ contract CountryRestrictModule is IComplianceModule {
         if (from == address(0)) {
             return !_isCountryBlocked(to);
         }
-        // Burn: check sender only
+        // Burn: ALWAYS allowed. Blocking burns for sanctioned/restricted
+        // jurisdictions would permanently lock the token in the wallet with
+        // no issuer recovery path. Jurisdictional enforcement happens at
+        // mint and transfer gates, not at destruction.
         if (to == address(0)) {
-            return !_isCountryBlocked(from);
+            return true;
         }
         // Transfer: both
         return !_isCountryBlocked(from) && !_isCountryBlocked(to);
@@ -73,8 +76,11 @@ contract CountryRestrictModule is IComplianceModule {
         override
         returns (string memory)
     {
+        // Burns are always allowed regardless of jurisdiction.
+        if (to == address(0)) return "";
+
         bool senderBlocked = from != address(0) && _isCountryBlocked(from);
-        bool receiverBlocked = to != address(0) && _isCountryBlocked(to);
+        bool receiverBlocked = _isCountryBlocked(to);
 
         if (senderBlocked && receiverBlocked) return "Sender and receiver in restricted jurisdictions";
         if (senderBlocked) return "Sender in restricted jurisdiction";
