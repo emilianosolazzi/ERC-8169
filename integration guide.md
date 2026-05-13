@@ -187,6 +187,8 @@ After burn:
 - `totalSupply()` decreases
 - `totalMinted()` does not decrease
 
+**Compliance interaction:** when used with `ERC721HCompliant`, burns (`to == address(0)`) bypass compliance module checks. KYC revocation, jurisdiction blocks, and active lock-ups do not prevent burn — this avoids permanently trapping tokens in non-compliant wallets and preserves the issuer's recall/recovery path. Transfers between non-zero addresses remain fully enforced. See `tests/ERC721H_ComplianceBurn.t.sol`.
+
 ## 9) Minimal ABI Strategy (Best Practice)
 
 Use generated ABI from the compiled artifact instead of manually curating JSON.
@@ -249,6 +251,7 @@ ERC-721H includes an optional ERC-3643-inspired compliance framework under `src/
 ```
 ERC721HCompliant (inherits ERC721H)
   └─ _beforeTokenTransfer() → ComplianceLib.enforceTransfer()
+       │  (burns where to == address(0) bypass all module checks)
        ├─ KYCModule.canTransfer()          ← both parties verified?
        ├─ CountryRestrictModule.canTransfer() ← jurisdiction allowed?
        ├─ MaxHoldersModule.canTransfer()    ← holder cap check

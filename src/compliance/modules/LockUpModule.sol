@@ -57,7 +57,7 @@ contract LockUpModule is IComplianceModule {
         return "Lock-Up Period";
     }
 
-    function canTransfer(address from, address /* to */, uint256 tokenId)
+    function canTransfer(address from, address to, uint256 tokenId)
         external
         view
         override
@@ -65,6 +65,9 @@ contract LockUpModule is IComplianceModule {
     {
         // Mints always allowed (lock starts after mint)
         if (from == address(0)) return true;
+        // Burns always allowed (matches NatSpec; prevents permanent lock-in
+        // when issuer needs to redeem/recall a token regardless of lock-up).
+        if (to == address(0)) return true;
 
         // Global lock check
         if (block.timestamp < globalLockUntil) return false;
@@ -75,13 +78,14 @@ contract LockUpModule is IComplianceModule {
         return true;
     }
 
-    function transferRestrictionMessage(address from, address /* to */, uint256 tokenId)
+    function transferRestrictionMessage(address from, address to, uint256 tokenId)
         external
         view
         override
         returns (string memory)
     {
         if (from == address(0)) return "";
+        if (to == address(0)) return "";
 
         if (block.timestamp < globalLockUntil) {
             return "Global lock-up period active";
